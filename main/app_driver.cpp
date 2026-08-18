@@ -13,6 +13,8 @@
 #include <esp_matter.h>
 #include <app_priv.h>
 
+#include <driver/gpio.h>
+
 #include <button_gpio.h>
 #include <iot_button.h>
 #include <stick_s3_light.h>

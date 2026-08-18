@@ -87,6 +87,18 @@ static uint8_t s_brightness = 64;
 static HS_color_t s_hs = {0, 0};
 static RGB_color_t s_rgb = {0, 0, 0};
 
+/* esp-matter's hsv_to_rgb() works in 0-100 per channel while xy_to_rgb() works
+ * in 0-255, so the hue/saturation path is scaled up to keep s_rgb at 0-255.
+ * The panel always shows the color at full value; the level lives on the
+ * backlight, so the conversions are asked for the brightest color. */
+static void hs_to_rgb(void)
+{
+    hsv_to_rgb(s_hs, 100, &s_rgb);
+    s_rgb.red = (uint8_t)(s_rgb.red * 255 / 100);
+    s_rgb.green = (uint8_t)(s_rgb.green * 255 / 100);
+    s_rgb.blue = (uint8_t)(s_rgb.blue * 255 / 100);
+}
+
 static esp_err_t m5pm1_read(i2c_master_dev_handle_t dev, uint8_t reg, uint8_t *val)
 {
     return i2c_master_transmit_receive(dev, &reg, 1, val, 1, 100);
@@ -294,29 +306,27 @@ esp_err_t stick_s3_light_set_brightness(uint8_t brightness)
 esp_err_t stick_s3_light_set_hue(uint16_t hue)
 {
     s_hs.hue = hue;
-    /* The panel shows the fully saturated color; the level lives on the
-     * backlight, so the color itself is always converted at full value. */
-    hsv_to_rgb(s_hs, 100, &s_rgb);
+    hs_to_rgb();
     return light_refresh();
 }
 
 esp_err_t stick_s3_light_set_saturation(uint8_t saturation)
 {
     s_hs.saturation = saturation;
-    hsv_to_rgb(s_hs, 100, &s_rgb);
+    hs_to_rgb();
     return light_refresh();
 }
 
 esp_err_t stick_s3_light_set_temperature(uint32_t temperature)
 {
     temp_to_hs(temperature, &s_hs);
-    hsv_to_rgb(s_hs, 100, &s_rgb);
+    hs_to_rgb();
     return light_refresh();
 }
 
 esp_err_t stick_s3_light_set_xy(uint16_t x, uint16_t y)
 {
     XY_color_t xy = {x, y};
-    xy_to_rgb(xy, 100, &s_rgb);
+    xy_to_rgb(xy, 255, &s_rgb); /* 0-255 scale, unlike hsv_to_rgb */
     return light_refresh();
 }
