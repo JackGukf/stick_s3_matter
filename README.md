@@ -103,6 +103,12 @@ follows. KEY1 toggles it locally, and Home reflects the change.
   an option on this board.
 - PSRAM is left disabled — the app fits in internal RAM (1.5 MB image, 23% free
   in a 1.9 MB OTA partition). Enable it in `menuconfig` if you extend the app.
-- The LCD, PMIC sequence and button pins were written from the vendor sources
-  above but have **not** been exercised on hardware yet: no board was attached
-  when this was built.
+- Confirmed on hardware: the PMIC power-up sequence brings the panel to life,
+  BLE commissioning into the Apple Home app succeeds, and the Home brightness
+  slider drives the backlight.
+- Not yet confirmed on hardware: the color path (hue/saturation, color
+  temperature, xy) and the KEY1 toggle / factory-reset long press.
+- One episode of the accessory going "No Response" in Home and recovering on its
+  own has been seen, cause not yet established — the serial log was not captured
+  at the time. If it recurs, catch `idf.py monitor` output during the outage: a
+  boot banner means the board reset, no banner means it only lost the network.
