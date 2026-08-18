@@ -1,0 +1,5 @@
+## IDF Component Manager Manifest File
+dependencies:
+  # Provides the `button` component (iot_button) used for KEY1 and for the
+  # factory-reset long press in esp-matter's app_reset.
+  espressif/button: "^4"
