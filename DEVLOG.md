@@ -25,7 +25,17 @@ on hardware. Local git only; no remote configured, nothing pushed.
 - ESP-IDF **v5.4.1** at `~/esp/esp-idf` — the version esp-matter v1.4.2 asks for.
   (`~/esp/esp-idf-v5.5.4` also exists; not used here.)
 - esp-matter **release/v1.4.2** at `~/esp/esp-matter`, submodules checked out,
-  `install.sh` run 2026-08-17.
+  `install.sh` run 2026-08-17. Its connectedhomeip submodule is pinned at
+  `bc661692` (2025-12-02) and implements **Matter 1.4.2** — the authority for
+  that is `kSpecificationVersion = 0x01040200` in
+  `src/app/SpecificationDefinedRevisions.h`, which is what the device reports in
+  Basic Information. Do **not** trust the `SPECIFICATION_VERSION` file at the
+  CHIP repo root; it still reads `1.2.0` and is stale. The submodule is a
+  `--depth 1` clone, so `git log` there cannot date anything either.
+- Newer upstream exists: esp-matter has `release/v1.5` and `release/v1.6`
+  branches, and connectedhomeip is tagged up to `v1.5.1.0` (no 1.6 tag yet).
+  Both newer esp-matter branches want ESP-IDF **v5.5.5**. Nothing in this
+  project needs them today — see Open questions before spending the upgrade.
 - Per terminal:
   `source ~/esp/esp-idf/export.sh && source ~/esp/esp-matter/export.sh && export IDF_CCACHE_ENABLE=1`
 - Development is in WSL2, so the board must be attached from an admin PowerShell
