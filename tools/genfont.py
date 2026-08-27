@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Jack Gu
+#
+# SPDX-License-Identifier: Apache-2.0
+
 # Emits components/stick_s3_light/font5x7.c from ASCII art.
 # Each glyph is 5 columns x 7 rows, stored row-major, bit4 = leftmost column.
 G = {
@@ -117,17 +121,15 @@ for code in range(first, last + 1):
 
 out = []
 out.append('/*')
-out.append('   This example code is in the Public Domain (or CC0 licensed, at your option.)')
-out.append('')
-out.append('   Unless required by applicable law or agreed to in writing, this')
-out.append('   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR')
-out.append('   CONDITIONS OF ANY KIND, either express or implied.')
-out.append('*/')
+out.append(' * SPDX-FileCopyrightText: 2026 Jack Gu')
+out.append(' *')
+out.append(' * SPDX-License-Identifier: Apache-2.0')
+out.append(' */')
 out.append('')
 out.append('/* Generated table -- see tools/genfont.py. 5x7 glyphs for ASCII 0x20-0x7E,')
 out.append(' * stored row-major with bit 4 as the leftmost column. */')
 out.append('')
-out.append('#include <font5x7.h>')
+out.append('#include "font5x7.h"')
 out.append('')
 out.append('const uint8_t font5x7[FONT5X7_GLYPHS][FONT5X7_ROWS] = {')
 for code, ch, vals in rows:

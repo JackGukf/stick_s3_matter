@@ -1,10 +1,8 @@
 /*
-   This example code is in the Public Domain (or CC0 licensed, at your option.)
-
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
-*/
+ * SPDX-FileCopyrightText: 2026 Jack Gu
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 /* A 5x7 bitmap font for the on-screen face. Kept in the firmware instead of a
  * graphics library: 665 bytes of table against the ~250 kB LVGL would add to an

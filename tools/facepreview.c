@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2026 Jack Gu
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 /* Renders the panel face on a host, using the same face.c the firmware runs, so
  * the layout can be checked without flashing. Writes one PPM per state.
  *

@@ -1,10 +1,8 @@
 /*
-   This example code is in the Public Domain (or CC0 licensed, at your option.)
-
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
-*/
+ * SPDX-FileCopyrightText: 2026 Jack Gu
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 /* The StickS3 has no LED, so the Matter light is rendered as a picture of a
  * light on the on-board ST7789P3 LCD: a bulb whose glass fills to the commanded

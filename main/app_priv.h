@@ -1,10 +1,11 @@
 /*
-   This example code is in the Public Domain (or CC0 licensed, at your option.)
-
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
-*/
+ * SPDX-FileCopyrightText: 2026 Jack Gu
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Derived from the `light` example in espressif/esp-matter, which Espressif
+ * placed in the public domain (CC0 1.0).
+ */
 
 #pragma once
 

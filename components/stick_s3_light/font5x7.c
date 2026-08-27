@@ -1,10 +1,8 @@
 /*
-   This example code is in the Public Domain (or CC0 licensed, at your option.)
-
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
-*/
+ * SPDX-FileCopyrightText: 2026 Jack Gu
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 /* Generated table -- see tools/genfont.py. 5x7 glyphs for ASCII 0x20-0x7E,
  * stored row-major with bit 4 as the leftmost column. */

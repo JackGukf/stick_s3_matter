@@ -200,8 +200,11 @@ The image is ~1.53 MB, leaving 22% free in the 1.92 MB OTA partition.
 
 ## Licence
 
-Apache License 2.0 — see [LICENSE](LICENSE).
+Apache License 2.0 — see [LICENSE](LICENSE). Every source file carries an SPDX
+header, so provenance is machine-readable:
 
-`main/app_main.cpp` and `main/app_driver.cpp` derive from the `light` example in
-[esp-matter](https://github.com/espressif/esp-matter), which Espressif places in
-the public domain (CC0); those files still carry that notice.
+- `SPDX-License-Identifier: Apache-2.0` on all sources.
+- `main/app_main.cpp`, `main/app_driver.cpp` and `main/app_priv.h` additionally
+  note that they derive from the `light` example in
+  [esp-matter](https://github.com/espressif/esp-matter), which Espressif placed
+  in the public domain (CC0 1.0).

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Jack Gu
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Convert the facepreview PPMs to PNGs, scaled up so the pixels are visible.
 
 Stdlib only (zlib + struct), so it runs anywhere the firmware builds.
