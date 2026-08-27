@@ -7,7 +7,7 @@ instructions belong in [README.md](README.md), not here.
 
 ## Current status
 
-`v0.3.1`, delivered over the air. Commissions into the Apple Home app
+`v0.3.2`, delivered over the air. Commissions into the Apple Home app
 and the level slider worked on hardware before the face landed. Local git only;
 no remote configured, nothing pushed.
 
@@ -18,7 +18,7 @@ no remote configured, nothing pushed.
 | BLE commissioning into Home | Confirmed on hardware |
 | Level → backlight PWM | Confirmed on hardware, then **replaced** by the bulb face |
 | Bulb face (all five states) | Confirmed on hardware |
-| Matter OTA, end to end | Confirmed on hardware (v0.3.0 -> v0.3.1 over Wi-Fi) |
+| Matter OTA, end to end | Confirmed on hardware, twice (v0.3.0 -> v0.3.1 -> v0.3.2) |
 | Second fabric alongside Apple Home | Confirmed on hardware |
 | Color path (hue/sat, temp, xy) | **Untested on hardware** |
 | KEY1 toggle, 5 s factory reset | **Untested on hardware** |
@@ -139,6 +139,20 @@ hub.
   is off, since identity and build are invisible on a dark panel.
 
 ## Sessions
+
+### 2026-08-27 (later) — sdkconfig drift guard, second OTA
+
+Closed the last of the three traps. The other two were already fixed and proven
+by the v0.3.1 update; this one had only been documented.
+
+- `tools/check_sdkconfig.py` compares every symbol in sdkconfig.defaults against
+  the generated sdkconfig at configure time and fails the build naming the
+  symbol. It only fires when the defaults are edited with an sdkconfig already
+  present -- the one case that previously built successfully while ignoring the
+  edit. Verified by reproducing the trap deliberately.
+- Shipped it as v0.3.2 over the air. The board took it from ota_1 back into
+  ota_0 (0x20000), alternating slots as intended, and stayed there across a
+  reboot, so rollback confirmation holds on both slots.
 
 ### 2026-08-27 — Matter OTA, end to end
 
