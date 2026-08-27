@@ -6,7 +6,9 @@
    CONDITIONS OF ANY KIND, either express or implied.
 */
 
+#include <esp_app_desc.h>
 #include <esp_log.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -43,10 +45,11 @@ static esp_err_t app_driver_light_set_power(esp_matter_attr_val_t *val)
     return stick_s3_light_set_power(val->val.b);
 }
 
-static esp_err_t app_driver_light_set_brightness(esp_matter_attr_val_t *val)
+/* The level is passed through unmapped: the face shows both the percentage and
+ * the raw 1-254 value, so the conversion belongs on the panel side. */
+static esp_err_t app_driver_light_set_level(esp_matter_attr_val_t *val)
 {
-    int value = REMAP_TO_RANGE(val->val.u8, MATTER_BRIGHTNESS, STANDARD_BRIGHTNESS);
-    return stick_s3_light_set_brightness(value);
+    return stick_s3_light_set_level(val->val.u8);
 }
 
 static esp_err_t app_driver_light_set_hue(esp_matter_attr_val_t *val)
@@ -93,7 +96,7 @@ esp_err_t app_driver_attribute_update(app_driver_handle_t driver_handle, uint16_
             }
         } else if (cluster_id == LevelControl::Id) {
             if (attribute_id == LevelControl::Attributes::CurrentLevel::Id) {
-                err = app_driver_light_set_brightness(val);
+                err = app_driver_light_set_level(val);
             }
         } else if (cluster_id == ColorControl::Id) {
             if (attribute_id == ColorControl::Attributes::CurrentHue::Id) {
@@ -114,15 +117,26 @@ esp_err_t app_driver_attribute_update(app_driver_handle_t driver_handle, uint16_
     return err;
 }
 
+/* The build line. ESP-IDF's app version is `git describe --always --tags
+ * --dirty` on a git checkout. */
+static esp_err_t app_driver_light_set_firmware(void)
+{
+    /* No "fw " prefix: the string is self-describing and the panel needs the
+     * width for the version, release candidate and commit. */
+    return stick_s3_light_set_firmware(esp_app_get_description()->version);
+}
+
 esp_err_t app_driver_light_set_defaults(uint16_t endpoint_id)
 {
     esp_err_t err = ESP_OK;
     esp_matter_attr_val_t val = esp_matter_invalid(NULL);
 
-    /* Setting brightness */
+    err |= app_driver_light_set_firmware();
+
+    /* Setting level */
     attribute_t *attribute = attribute::get(endpoint_id, LevelControl::Id, LevelControl::Attributes::CurrentLevel::Id);
     attribute::get_val(attribute, &val);
-    err |= app_driver_light_set_brightness(&val);
+    err |= app_driver_light_set_level(&val);
 
     /* Setting color */
     attribute = attribute::get(endpoint_id, ColorControl::Id, ColorControl::Attributes::ColorMode::Id);

@@ -19,6 +19,7 @@
 
 #include <app_priv.h>
 #include <app_reset.h>
+#include <stick_s3_light.h>
 
 #include <app/server/CommissioningWindowManager.h>
 #include <app/server/Server.h>
@@ -32,6 +33,29 @@ using namespace esp_matter::endpoint;
 using namespace chip::app::Clusters;
 
 constexpr auto k_timeout_seconds = 300;
+
+/* The face's status bar. Derived rather than tracked: PAIRING while a
+ * commissioning window is open on an uncommissioned node, ONLINE once the node
+ * is on a fabric and the station is up. */
+static void app_update_net_state(void)
+{
+    auto &server = chip::Server::GetInstance();
+    stick_s3_net_state_t state = STICK_S3_NET_OFFLINE;
+
+    if (server.GetFabricTable().FabricCount() > 0) {
+#if CHIP_DEVICE_CONFIG_ENABLE_WIFI
+        if (chip::DeviceLayer::ConnectivityMgr().IsWiFiStationConnected()) {
+            state = STICK_S3_NET_ONLINE;
+        }
+#else
+        state = STICK_S3_NET_ONLINE;
+#endif
+    } else if (server.GetCommissioningWindowManager().IsCommissioningWindowOpen()) {
+        state = STICK_S3_NET_PAIRING;
+    }
+
+    stick_s3_light_set_net_state(state);
+}
 
 static void app_event_cb(const ChipDeviceEvent *event, intptr_t arg)
 {
@@ -105,6 +129,8 @@ static void app_event_cb(const ChipDeviceEvent *event, intptr_t arg)
     default:
         break;
     }
+
+    app_update_net_state();
 }
 
 // This callback is invoked when clients interact with the Identify Cluster.

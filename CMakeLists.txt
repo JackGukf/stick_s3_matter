@@ -9,7 +9,29 @@ if(NOT DEFINED ENV{ESP_MATTER_PATH})
     message(FATAL_ERROR "Please set ESP_MATTER_PATH to the path of the esp-matter repo")
 endif(NOT DEFINED ENV{ESP_MATTER_PATH})
 
-set(PROJECT_VER "1.0")
+# The build string the panel shows: version and release candidate come from
+# version.txt (edit that one line per build), the short commit is appended
+# automatically so it never has to be typed and can never be wrong. Reconfigure
+# is triggered by either input changing.
+#
+# This is set before project() so ESP-IDF uses it verbatim rather than falling
+# back to `git describe`, which appends "-dirty" on any uncommitted change.
+file(STRINGS "${CMAKE_CURRENT_LIST_DIR}/version.txt" STICK_S3_RELEASE LIMIT_COUNT 1)
+execute_process(
+    COMMAND git -C "${CMAKE_CURRENT_LIST_DIR}" rev-parse --short=7 HEAD
+    OUTPUT_VARIABLE STICK_S3_COMMIT
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+    RESULT_VARIABLE STICK_S3_GIT_RESULT)
+if(STICK_S3_GIT_RESULT EQUAL 0)
+    set(PROJECT_VER "${STICK_S3_RELEASE}-${STICK_S3_COMMIT}")
+else()
+    set(PROJECT_VER "${STICK_S3_RELEASE}")
+endif()
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_LIST_DIR}/version.txt"
+    "${CMAKE_CURRENT_LIST_DIR}/.git/HEAD")
+
 set(PROJECT_VER_NUMBER 1)
 
 set(ESP_MATTER_PATH $ENV{ESP_MATTER_PATH})
