@@ -9,6 +9,7 @@
 
 #include <esp_err.h>
 #include <esp_log.h>
+#include <esp_ota_ops.h>
 #include <nvs_flash.h>
 
 #include <esp_matter.h>
@@ -34,6 +35,31 @@ using namespace esp_matter::endpoint;
 using namespace chip::app::Clusters;
 
 constexpr auto k_timeout_seconds = 300;
+
+/* With CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE a freshly OTA'd image boots in
+ * PENDING_VERIFY, and the bootloader reverts to the previous slot on the next
+ * reset unless the app marks itself valid. Nothing in esp-matter or CHIP's
+ * ESP32 platform does that, so the app has to.
+ *
+ * Reaching an IP address is the health gate: the panel came up, Wi-Fi joined and
+ * the Matter stack is running. An image that cannot get that far is exactly the
+ * one that should be rolled back. Images flashed over USB are never in
+ * PENDING_VERIFY, so this is a no-op for them. */
+static void app_confirm_running_image(void)
+{
+    const esp_partition_t *running = esp_ota_get_running_partition();
+    esp_ota_img_states_t state;
+
+    if (!running || esp_ota_get_state_partition(running, &state) != ESP_OK) {
+        return;
+    }
+    if (state != ESP_OTA_IMG_PENDING_VERIFY) {
+        return;
+    }
+
+    esp_err_t err = esp_ota_mark_app_valid_cancel_rollback();
+    ESP_LOGI(TAG, "OTA image confirmed healthy, rollback cancelled (err %d)", err);
+}
 
 /* The face's status bar. Derived rather than tracked: PAIRING while a
  * commissioning window is open on an uncommissioned node, ONLINE once the node
@@ -63,6 +89,7 @@ static void app_event_cb(const ChipDeviceEvent *event, intptr_t arg)
     switch (event->Type) {
     case chip::DeviceLayer::DeviceEventType::kInterfaceIpAddressChanged:
         ESP_LOGI(TAG, "Interface IP Address changed");
+        app_confirm_running_image();
         break;
 
     case chip::DeviceLayer::DeviceEventType::kCommissioningComplete:

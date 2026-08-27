@@ -61,6 +61,26 @@ set(EXTRA_COMPONENT_DIRS
 
 project(stick_s3_light)
 
+# The panel string and the number an OTA provider compares against come from two
+# different places -- version.txt and CONFIG_DEVICE_SOFTWARE_VERSION_NUMBER --
+# and if they drift, OTA fails silently or offers the wrong image. Encode one
+# from the other and refuse to build on a mismatch.
+if(STICK_S3_RELEASE MATCHES "^v?([0-9]+)\\.([0-9]+)\\.([0-9]+)")
+    math(EXPR STICK_S3_EXPECTED_VER
+         "${CMAKE_MATCH_1} * 10000 + ${CMAKE_MATCH_2} * 100 + ${CMAKE_MATCH_3}")
+    if(NOT "${CONFIG_DEVICE_SOFTWARE_VERSION_NUMBER}" STREQUAL "${STICK_S3_EXPECTED_VER}")
+        message(FATAL_ERROR
+            "version.txt says ${STICK_S3_RELEASE} (software version "
+            "${STICK_S3_EXPECTED_VER}) but CONFIG_DEVICE_SOFTWARE_VERSION_NUMBER "
+            "is ${CONFIG_DEVICE_SOFTWARE_VERSION_NUMBER}. Set it in "
+            "sdkconfig.defaults and run 'rm sdkconfig && idf.py build' -- "
+            "sdkconfig.defaults only seeds a fresh sdkconfig.")
+    endif()
+else()
+    message(WARNING "version.txt (${STICK_S3_RELEASE}) is not vMAJOR.MINOR.PATCH; "
+                    "cannot cross-check CONFIG_DEVICE_SOFTWARE_VERSION_NUMBER")
+endif()
+
 idf_build_set_property(CXX_COMPILE_OPTIONS "-std=gnu++17;-Os;-DCHIP_HAVE_CONFIG_H;-Wno-overloaded-virtual" APPEND)
 idf_build_set_property(C_COMPILE_OPTIONS "-Os" APPEND)
 idf_build_set_property(COMPILE_OPTIONS "-Wno-format-nonliteral;-Wno-format-security" APPEND)
