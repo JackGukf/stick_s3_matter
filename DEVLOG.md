@@ -7,15 +7,17 @@ instructions belong in [README.md](README.md), not here.
 
 ## Current status
 
-`v0.1.0` — commissions into the Apple Home app and the brightness slider works
-on hardware. Local git only; no remote configured, nothing pushed.
+`v0.1.1` plus the bulb face, uncommitted. Commissions into the Apple Home app
+and the level slider worked on hardware before the face landed. Local git only;
+no remote configured, nothing pushed.
 
 | Area | State |
 | --- | --- |
-| Build | Clean. 1.5 MB image, 23% free in the 1.9 MB OTA partition |
+| Build | Clean. 1.53 MB image, 22% free in the 1.9 MB OTA partition |
 | PMIC power-up → panel lit | Confirmed on hardware |
 | BLE commissioning into Home | Confirmed on hardware |
-| Brightness (backlight PWM) | Confirmed on hardware |
+| Level → backlight PWM | Confirmed on hardware, then **replaced** by the bulb face |
+| Bulb face (all five states) | Verified only by host render, **untested on hardware** |
 | Color path (hue/sat, temp, xy) | **Untested on hardware** |
 | KEY1 toggle, 5 s factory reset | **Untested on hardware** |
 | Stability over hours | One unexplained "No Response" episode, self-recovered |
@@ -125,10 +127,65 @@ hub.
 - Press KEY1 (toggle) and hold it 5 s (factory reset); confirm Home follows.
 - Decide where to push, then `git remote add origin <URL>` and
   `git push -u origin main --follow-tags`.
-- If a redraw ever proves to block the Matter task, only repaint when the color
-  actually changes — brightness-only updates already skip the panel entirely.
+- Flash the bulb face and confirm it on hardware: the 1 % sliver, the level
+  readout tracking a Home slider drag, and the footer's build string.
+- Decide the two open design questions the face raised: whether footer line 1
+  should carry the Basic Information `NodeLabel` instead of VID/PID/EP, and
+  whether the build string should be the Matter `SoftwareVersion` (still 0)
+  rather than `git describe`.
+- KEY2 (G12) is still unused. It could wake a plain info screen while the light
+  is off, since identity and build are invisible on a dark panel.
 
 ## Sessions
+
+### 2026-08-25 → 2026-08-26 — the bulb face
+
+Replaced the whole-panel color fill with a drawn light bulb, after reviewing a
+GUI design of the five states first.
+
+- The level no longer rides on the backlight: it is the bulb's fill height and a
+  percentage readout. The backlight is now just on or off, following `OnOff`,
+  and colour tints the bulb instead of the whole panel.
+- `stick_s3_light_set_brightness(0-100)` became `stick_s3_light_set_level(1-254)`
+  — the face shows the raw Matter level, so the remap belongs on the panel side.
+- Split the component: `face.c` draws, `stick_s3_light.c` owns the hardware,
+  state and the render task. `tools/facepreview.c` links the real `face.c` on
+  the host and writes a PPM per state, which is how the layout was checked
+  without hardware.
+- Rejected LVGL (~250 kB against a 1.92 MB slot) and a framebuffer (63 kB, no
+  PSRAM on this target). The face is flat spans plus a generated 5x7 font
+  (`tools/genfont.py`, 665 bytes) rendered into a 30-line band buffer.
+- Level writes are coalesced over 40 ms on a dedicated render task, so a slider
+  drag repaints once rather than flooding SPI.
+- `PROJECT_VER` was pinned to `"1.0"` from the example; unpinned it so ESP-IDF
+  derives it from `git describe`, which is what the footer shows.
+- The first render hid the 1 % fill: the neck is drawn over the bottom of the
+  glass, so a level measured to the circle's bottom was invisible. The fill is
+  now measured to the top of the neck.
+- Image grew 2.5 kB to 1,527,200 bytes; 22 % of the OTA slot still free.
+- Tagged `v0.1.1` at the previous head (documentation-only commits) so the build
+  string had a clean base.
+
+**On hardware** (user), across four flashes:
+
+- The face works, but the first build showed the level as several overlapping
+  partial numbers. Cause: `esp_lcd_panel_draw_bitmap()` queues the colour
+  transfer and returns while DMA is still reading the band buffer
+  (`esp_lcd_panel_io_spi.c:394`), so the next band was drawn over data still in
+  flight. The old whole-panel fill had the same race but every band was an
+  identical solid colour, so it never showed. Fixed with an
+  `on_color_trans_done` callback and a semaphore the render loop waits on.
+- Small text read as blurry on the physical panel: single-pixel strokes plus dim
+  greys, worse now the backlight sits at full duty instead of tracking the level.
+  Dropped the `lvl n/254` line, the device type and the VID/PID/EP line, then
+  spent the space on larger, brighter type.
+- The screw base's two black thread lines read as stray artifacts; removed, and
+  the neck recoloured to match the base so the stem is one piece.
+- Bulb was too small and sat too high: radius 30 -> 40, ring 2 -> 3 px, moved
+  down, percentage back to 5x scale to pay for the room.
+- `git describe` put `-dirty` on the panel, which is git plumbing rather than a
+  build number. Replaced with `version.txt` (version and RC) plus a CMake-
+  appended short commit, drawn as two lines split at the last `-`.
 
 ### 2026-08-17 → 2026-08-18 — initial bring-up
 

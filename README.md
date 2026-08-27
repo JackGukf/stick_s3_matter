@@ -4,10 +4,11 @@ A Matter **extended color light** for the M5Stack StickS3 (ESP32-S3-PICO-1-N8R8)
 built on [ESP-Matter](https://docs.espressif.com/projects/esp-matter/en/latest/esp32s3/developing.html).
 It commissions over BLE, runs over Wi-Fi, and pairs with the Apple Home app.
 
-The StickS3 has no LED, so the light *is* the on-board 1.14" ST7789P3 LCD: the
-panel is filled with the current color and the backlight PWM carries the
-brightness level. On/off, brightness, hue/saturation, color temperature and
-CIE xy all drive the display.
+The StickS3 has no LED, so the light is *drawn* on the on-board 1.14" ST7789P3
+LCD: a bulb whose glass fills to the commanded dim level, the level as a
+percentage, and the node's Matter identity and firmware build along the bottom.
+Color (hue/saturation, color temperature, CIE xy) tints the bulb. On/off still
+cuts the backlight, so "off" is a dark panel.
 
 ## Layout
 
@@ -15,9 +16,50 @@ CIE xy all drive the display.
 | --- | --- |
 | `main/app_main.cpp` | Matter node: root node + extended color light endpoint |
 | `main/app_driver.cpp` | Maps cluster attributes to the light, KEY1 button handling |
-| `components/stick_s3_light/` | Board driver: PMIC power rail, ST7789P3 panel, backlight |
+| `components/stick_s3_light/` | Board driver: PMIC power rail, ST7789P3 panel, backlight, render task |
+| `components/stick_s3_light/face.c` | The picture on the panel. Pure drawing, no hardware |
+| `components/stick_s3_light/font5x7.c` | Generated 5x7 ASCII font (see `tools/genfont.py`) |
+| `tools/facepreview.c` | Renders the face on a host, so the layout can be checked without flashing |
 | `partitions.csv` | Partition table (from the esp-matter light example) |
 | `sdkconfig.defaults` | Matter + StickS3 config (8 MB flash, USB-Serial/JTAG console) |
+
+## The face
+
+The panel is 135x240 in four fixed bands, so a level change only repaints the
+middle two:
+
+| Band | Y | Contents |
+| --- | --- | --- |
+| status | 0-17 | `MATTER` and the network state, with a rule beneath |
+| bulb | 22-148 | Glass circle at (67, 74) r 30, neck, screw base. The glass fills from the neck upward |
+| level | 150-206 | Percentage at 5x scale, raw `lvl n/254` beneath |
+| footer | 208-240 | Device type, vendor/product/endpoint, firmware build |
+
+Everything is flat spans and a 5x7 bitmap font drawn into a 30-line band buffer:
+no graphics library (LVGL would add ~250 kB to an image that has to fit a
+1.92 MB OTA slot) and no framebuffer (a full one is 63 kB and this target has no
+PSRAM). Level updates are coalesced over 40 ms, so dragging the Home app's
+slider does not flood the SPI bus.
+
+To see the face without flashing:
+
+```bash
+cc -Icomponents/stick_s3_light -o /tmp/facepreview tools/facepreview.c components/stick_s3_light/face.c components/stick_s3_light/font5x7.c -lm && /tmp/facepreview /tmp && python3 tools/ppm2png.py /tmp/face-*.ppm
+```
+
+The build string along the bottom is `<version>-<rc>-<commit>`, e.g.
+`v0.1.1-rc01-1bd27bd`. The first two parts come from [version.txt](version.txt);
+the short commit is appended by CMake, so it is never typed and never wrong:
+
+```bash
+echo v0.1.1-rc02 > version.txt && idf.py build
+```
+
+Both `version.txt` and `.git/HEAD` are configure dependencies, so editing either
+re-stamps the image without a clean. The panel splits the string at the last
+`-`, drawing the version on one line and the commit below it; each line is drawn
+double size when it fits 135 px (11 characters) and drops to single size when it
+does not. Keeping the version part to 11 characters keeps both lines large.
 
 Board facts this depends on (M5Stack StickS3 PinMap + M5GFX `board_M5StickS3`):
 
