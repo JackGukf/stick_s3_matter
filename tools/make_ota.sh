@@ -32,7 +32,14 @@ cfg() { sed -n "s/^#define $1 \\(.*\\)$/\\1/p" "$config"; }
 
 vendor=$(cfg CONFIG_DEVICE_VENDOR_ID)
 product=$(cfg CONFIG_DEVICE_PRODUCT_ID)
-version=$(cfg CONFIG_DEVICE_SOFTWARE_VERSION_NUMBER)
+# Read the number CHIP was actually compiled with, not a Kconfig that may be
+# ignored -- args.gn is what the firmware reports as SoftwareVersion.
+gn_args="$here/build/esp-idf/chip/args.gn"
+version=$(sed -n 's/^chip_config_software_version_number = \([0-9]*\)$/\1/p' "$gn_args")
+if [ -z "$version" ]; then
+    echo "error: could not read chip_config_software_version_number from $gn_args" >&2
+    exit 1
+fi
 # The version string Matter reports comes from esp_app_desc, i.e. version.txt.
 version_str=$(head -n1 "$here/version.txt")
 

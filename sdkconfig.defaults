@@ -40,12 +40,10 @@ CONFIG_ESP_WIFI_SOFTAP_SUPPORT=n
 # Enable OTA Requestor
 CONFIG_ENABLE_OTA_REQUESTOR=y
 
-# The version an OTA provider compares against, so it must rise with every
-# release. Encoded from version.txt as major*10000 + minor*100 + patch, which
-# keeps it monotonic and readable: v0.3.0 -> 300, v0.3.1 -> 301, v1.0.0 -> 10000.
-# The SoftwareVersionString Matter reports is separate and already comes from
-# version.txt by way of esp_app_desc.
-CONFIG_DEVICE_SOFTWARE_VERSION_NUMBER=301
+# Note: CONFIG_DEVICE_SOFTWARE_VERSION_NUMBER is deliberately NOT set here. It
+# only takes effect when CONFIG_APP_PROJECT_VER_FROM_CONFIG is enabled, and is
+# otherwise silently ignored in favour of PROJECT_VER_NUMBER, which
+# CMakeLists.txt derives from version.txt.
 
 # Revert to the previous slot if a freshly OTA'd image never reports itself
 # healthy. app_main.cpp does the reporting -- nothing in esp-matter or CHIP's
