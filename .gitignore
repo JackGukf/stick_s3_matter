@@ -1,5 +1,33 @@
+# ESP-IDF build output and generated config
 build/
 managed_components/
 dependencies.lock
 sdkconfig
 sdkconfig.old
+
+# Editor / workspace
+*.code-workspace
+.cache/
+.vscode/
+
+# Object and library files
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.d
+*.gch
+*.pch
+
+# Debug information
+*.pdb
+*.dwo
+*.ilk
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
