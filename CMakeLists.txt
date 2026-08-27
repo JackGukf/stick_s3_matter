@@ -28,9 +28,22 @@ if(STICK_S3_GIT_RESULT EQUAL 0)
 else()
     set(PROJECT_VER "${STICK_S3_RELEASE}")
 endif()
-set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
-    "${CMAKE_CURRENT_LIST_DIR}/version.txt"
-    "${CMAKE_CURRENT_LIST_DIR}/.git/HEAD")
+# .git/HEAD changes on checkout, but a commit on the current branch only
+# rewrites that branch's ref file -- depend on both, or the panel keeps showing
+# the previous commit until something else forces a reconfigure.
+set(STICK_S3_VER_DEPS "${CMAKE_CURRENT_LIST_DIR}/version.txt")
+if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/.git/HEAD")
+    list(APPEND STICK_S3_VER_DEPS "${CMAKE_CURRENT_LIST_DIR}/.git/HEAD")
+    file(READ "${CMAKE_CURRENT_LIST_DIR}/.git/HEAD" STICK_S3_GIT_HEAD)
+    string(STRIP "${STICK_S3_GIT_HEAD}" STICK_S3_GIT_HEAD)
+    # A packed ref has no file of its own; nothing to watch, and listing a
+    # missing file would reconfigure on every build.
+    if(STICK_S3_GIT_HEAD MATCHES "^ref: (.+)$"
+       AND EXISTS "${CMAKE_CURRENT_LIST_DIR}/.git/${CMAKE_MATCH_1}")
+        list(APPEND STICK_S3_VER_DEPS "${CMAKE_CURRENT_LIST_DIR}/.git/${CMAKE_MATCH_1}")
+    endif()
+endif()
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${STICK_S3_VER_DEPS})
 
 set(PROJECT_VER_NUMBER 1)
 
