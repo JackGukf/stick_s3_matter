@@ -145,6 +145,72 @@ If a flash fails partway with `could not open port`, the board re-enumerated
 mid-command. Re-attach and retry. If Windows starts reporting it as
 `Unknown USB Device (Device Descriptor Request Failed)`, unplug and replug it.
 
+## Over-the-air updates
+
+The OTA Requestor is on endpoint 0 and works, but a Matter device never pulls
+from the internet -- it asks an *OTA Provider* on its own fabric. Apple Home
+will not serve firmware to a device on test VID/PID, so updates need a provider
+you run yourself.
+
+Two things are worth knowing before starting:
+
+- **Rollback lives in the bootloader, which OTA does not replace.** A device has
+  to be USB-flashed once from a build with `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE`
+  before over-the-air updates are protected.
+- **`CONFIG_DEVICE_SOFTWARE_VERSION_NUMBER` does nothing here.** The chip
+  component reads it only when `CONFIG_APP_PROJECT_VER_FROM_CONFIG` is set, and
+  otherwise uses `PROJECT_VER_NUMBER`, which `CMakeLists.txt` derives from
+  `version.txt`. Bump the version there and the number follows.
+
+Build the image:
+
+```bash
+echo v0.3.2 > version.txt && idf.py build && ./tools/make_ota.sh
+```
+
+Run a provider (built from connectedhomeip's `examples/ota-provider-app/linux`)
+and commission it onto a controller fabric:
+
+```bash
+chip-ota-provider-app --discriminator 22 --passcode 20202021 \
+    --secured-device-port 5565 --KVS /tmp/chip_kvs_provider \
+    -f build/stick_s3_light-<version>.ota &
+chip-tool pairing onnetwork 1 20202021
+chip-tool accesscontrol write acl \
+    '[{"fabricIndex":1,"privilege":5,"authMode":2,"subjects":[112233],"targets":null},
+      {"fabricIndex":1,"privilege":3,"authMode":2,"subjects":null,"targets":null}]' 1 0
+```
+
+The light must be on that same fabric. It stays in Apple Home throughout --
+Matter allows multiple fabrics, and this adds one rather than replacing it. In
+Home, open the accessory's *Turn On Pairing Mode* for a setup code, then:
+
+```bash
+chip-tool pairing code 2 <setup-code>
+chip-tool otasoftwareupdaterequestor write default-otaproviders \
+    '[{"fabricIndex":<index>,"providerNodeID":1,"endpoint":0}]' 2 0
+chip-tool otasoftwareupdaterequestor announce-otaprovider 1 0 1 0 2 0
+```
+
+Registering `default-otaproviders` matters: `announce-otaprovider` alone is a
+one-shot hint and the requestor has nowhere to query without it. Announcement
+reason `1` (UrgentUpdateAvailable) makes it query immediately instead of waiting
+for its 24-hour periodic timer.
+
+Watch progress with `otasoftwareupdaterequestor read update-state 2 0`
+(4 = downloading) and `read update-state-progress 2 0`.
+
+### Running the provider under WSL2
+
+WSL's Hyper-V firewall has `DefaultInboundAction: Block`, and the only inbound
+rules it ships with are ICMP and mDNS (UDP 5353). The device therefore
+*discovers* the provider and then fails to reach it, which looks like a silent
+hang. Allow the operational port from an admin PowerShell:
+
+```powershell
+New-NetFirewallHyperVRule -Name "WSL-Matter-OTA" -DisplayName "WSL Matter OTA Provider (UDP 5565)" -VMCreatorId '{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}' -Direction Inbound -Protocol UDP -LocalPorts 5565 -Action Allow
+```
+
 ## Pair with the Apple Home app
 
 The firmware is built with the standard Matter **test** credentials
@@ -182,14 +248,16 @@ Confirmed on hardware:
 - BLE commissioning into the Apple Home app.
 - The bulb face: level changes from Home track the fill and the percentage, and
   the build string renders correctly.
+- **Matter OTA, end to end.** v0.3.0 -> v0.3.1 over Wi-Fi: query, 1.5 MB BDX
+  transfer, apply, reboot into the second slot, and `NotifyUpdateApplied`. The
+  device came back reporting SoftwareVersion 301, and a further reboot still
+  loaded from `0x200000`, proving the image was confirmed and not rolled back.
+- Joining a second fabric (chip-tool) alongside Apple Home, with Home unaffected.
 
 Not yet confirmed on hardware:
 
 - The colour path (hue/saturation, colour temperature, CIE xy) driving the tint.
 - KEY1 toggle and the 5 s factory-reset hold.
-- Matter OTA. The OTA Requestor is compiled in and the partition table has two
-  app slots, but no update has been served to the device. `SoftwareVersion` is
-  still `0`, so it would need bumping before an image is accepted.
 
 Known loose end: one episode of the accessory going "No Response" in Home and
 recovering on its own, cause not established — the serial log was not captured.

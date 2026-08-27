@@ -7,7 +7,7 @@ instructions belong in [README.md](README.md), not here.
 
 ## Current status
 
-`v0.1.1` plus the bulb face, uncommitted. Commissions into the Apple Home app
+`v0.3.1`, delivered over the air. Commissions into the Apple Home app
 and the level slider worked on hardware before the face landed. Local git only;
 no remote configured, nothing pushed.
 
@@ -17,7 +17,9 @@ no remote configured, nothing pushed.
 | PMIC power-up → panel lit | Confirmed on hardware |
 | BLE commissioning into Home | Confirmed on hardware |
 | Level → backlight PWM | Confirmed on hardware, then **replaced** by the bulb face |
-| Bulb face (all five states) | Verified only by host render, **untested on hardware** |
+| Bulb face (all five states) | Confirmed on hardware |
+| Matter OTA, end to end | Confirmed on hardware (v0.3.0 -> v0.3.1 over Wi-Fi) |
+| Second fabric alongside Apple Home | Confirmed on hardware |
 | Color path (hue/sat, temp, xy) | **Untested on hardware** |
 | KEY1 toggle, 5 s factory reset | **Untested on hardware** |
 | Stability over hours | One unexplained "No Response" episode, self-recovered |
@@ -137,6 +139,42 @@ hub.
   is off, since identity and build are invisible on a dark panel.
 
 ## Sessions
+
+### 2026-08-27 — Matter OTA, end to end
+
+Delivered v0.3.1 to the board over Wi-Fi. Tagged `v0.2.0` first as a restore
+point. Three things were wrong, none of them the OTA Requestor, which was
+already compiled in and on endpoint 0 the whole time.
+
+- **`CONFIG_DEVICE_SOFTWARE_VERSION_NUMBER` is inert in this project.** The chip
+  component reads it only under `CONFIG_APP_PROJECT_VER_FROM_CONFIG`, and
+  otherwise falls through to `PROJECT_VER_NUMBER` -- hardcoded to 1 in the
+  esp-matter example this project came from. The board reported SoftwareVersion
+  1 while calling itself v0.3.0, and `build/esp-idf/chip/args.gn` confirmed
+  `chip_config_software_version_number = 1`. An update would still have applied,
+  but the device would have kept reporting 1 afterwards, so the provider would
+  have offered the same image in a loop forever. Now derived from version.txt.
+- **`sdkconfig.defaults` only seeds a fresh `sdkconfig`.** The first attempt
+  silently kept the old values; `rm sdkconfig` is required after editing it.
+- **Rollback needs a call nobody makes.** Neither esp-matter nor CHIP's ESP32
+  platform calls `esp_ota_mark_app_valid_cancel_rollback()`; CHIP's
+  `ConfirmCurrentImage()` only compares version numbers. Enabling rollback
+  without adding that call would revert every OTA on the next reboot. app_main
+  now makes it on IP acquisition. Verified by rebooting after the update: the
+  board still loaded from `0x200000` (ota_1) rather than reverting.
+
+Host side: built `chip-ota-provider-app`, commissioned it as node 1, and added
+the light to that fabric as node 2 via Home's *Turn On Pairing Mode* -- Apple
+Home was unaffected, 4 of 5 fabric slots now used.
+
+**The WSL blocker.** The device discovered the provider and then silently failed
+to reach it. Cause: WSL's Hyper-V firewall has `DefaultInboundAction: Block`,
+and its only inbound Allow rules are ICMP and mDNS (UDP 5353) -- so discovery
+worked and the CASE handshake on UDP 5565 was dropped. One
+`New-NetFirewallHyperVRule` for 5565 fixed it. See README for the command.
+
+Note `announce-otaprovider` alone is not enough: it is a one-shot hint, and the
+requestor needs `default-otaproviders` written first or it has nowhere to query.
 
 ### 2026-08-25 → 2026-08-26 — the bulb face
 
