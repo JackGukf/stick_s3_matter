@@ -75,6 +75,24 @@ set(EXTRA_COMPONENT_DIRS
 
 project(stick_s3_light)
 
+# sdkconfig.defaults is only read when sdkconfig is generated fresh, so editing
+# it on an existing build is silently ignored. Catch that here rather than
+# shipping firmware that quietly kept the old values.
+set(STICK_S3_DEFAULTS "${CMAKE_CURRENT_LIST_DIR}/sdkconfig.defaults")
+if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/sdkconfig.defaults.${IDF_TARGET}")
+    list(APPEND STICK_S3_DEFAULTS "${CMAKE_CURRENT_LIST_DIR}/sdkconfig.defaults.${IDF_TARGET}")
+endif()
+execute_process(
+    COMMAND "${PYTHON}" "${CMAKE_CURRENT_LIST_DIR}/tools/check_sdkconfig.py"
+            ${STICK_S3_DEFAULTS} "${CMAKE_CURRENT_LIST_DIR}/sdkconfig"
+    RESULT_VARIABLE STICK_S3_SDKCONFIG_DRIFT
+    OUTPUT_VARIABLE STICK_S3_SDKCONFIG_OUT
+    ERROR_VARIABLE STICK_S3_SDKCONFIG_ERR)
+if(NOT STICK_S3_SDKCONFIG_DRIFT EQUAL 0)
+    message(FATAL_ERROR "${STICK_S3_SDKCONFIG_ERR}")
+endif()
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${STICK_S3_DEFAULTS})
+
 idf_build_set_property(CXX_COMPILE_OPTIONS "-std=gnu++17;-Os;-DCHIP_HAVE_CONFIG_H;-Wno-overloaded-virtual" APPEND)
 idf_build_set_property(C_COMPILE_OPTIONS "-Os" APPEND)
 idf_build_set_property(COMPILE_OPTIONS "-Wno-format-nonliteral;-Wno-format-security" APPEND)
