@@ -179,7 +179,24 @@ already compiled in and on endpoint 0 the whole time.
 
 Host side: built `chip-ota-provider-app`, commissioned it as node 1, and added
 the light to that fabric as node 2 via Home's *Turn On Pairing Mode* -- Apple
-Home was unaffected, 4 of 5 fabric slots now used.
+Home was unaffected.
+
+Torn down afterwards: `default-otaproviders` cleared, the chip-tool fabric
+removed with `operationalcredentials remove-fabric`, and the provider stopped.
+The board is back to three fabrics and one free slot. Identifying them needed
+the Matter DCL, since two look alike at a glance:
+
+| Index | VendorID | Who |
+| --- | --- | --- |
+| 1 | 0x1349 | Apple Home |
+| 2 | 0x1384 | Apple Keychain -- also Apple, *not* spare |
+| 3 | 0xFFF1 | the dashboard (test vendor ID, so not in the DCL) |
+
+Removing the chip-tool fabric mattered rather than just walking away from it:
+chip-tool's credentials live in `/tmp`, which systemd empties on boot
+(`D /tmp` in `/usr/lib/tmpfiles.d/tmp.conf`). Abandoning the fabric would have
+left a slot consumed by a controller that no longer exists, and the device only
+supports five. Next time, pair chip-tool again through Home's pairing mode.
 
 **The WSL blocker.** The device discovered the provider and then silently failed
 to reach it. Cause: WSL's Hyper-V firewall has `DefaultInboundAction: Block`,
