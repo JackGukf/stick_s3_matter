@@ -97,11 +97,11 @@ a fresh checkout.
 ### Build number
 
 The string along the bottom of the panel is `<version>-<rc>-<commit>`, e.g.
-`v0.1.1-rc01-d0d002c`. The first two parts come from [version.txt](version.txt);
+`v0.3.2-3d46e5a`. The version comes from [version.txt](version.txt);
 the short commit is appended by CMake, so it is never typed and never wrong:
 
 ```bash
-echo v0.1.1-rc02 > version.txt && idf.py build
+echo v0.3.3 > version.txt && idf.py build
 ```
 
 `version.txt`, `.git/HEAD` and the current branch ref are all configure
@@ -248,11 +248,12 @@ Confirmed on hardware:
 - BLE commissioning into the Apple Home app.
 - The bulb face: level changes from Home track the fill and the percentage, and
   the build string renders correctly.
-- **Matter OTA, end to end.** v0.3.0 -> v0.3.1 over Wi-Fi: query, 1.5 MB BDX
-  transfer, apply, reboot into the second slot, and `NotifyUpdateApplied`. The
-  device came back reporting SoftwareVersion 301, and a further reboot still
-  loaded from `0x200000`, proving the image was confirmed and not rolled back.
-- Joining a second fabric (chip-tool) alongside Apple Home, with Home unaffected.
+- **Matter OTA, end to end, twice.** v0.3.0 -> v0.3.1 -> v0.3.2 over Wi-Fi:
+  query, 1.5 MB BDX transfer, apply, reboot, `NotifyUpdateApplied`. The updates
+  alternated slots (`0x200000` then `0x20000`) and each survived a further
+  reboot, so rollback confirmation holds on both halves of the layout.
+- Joining a second fabric (chip-tool) alongside Apple Home and removing it
+  again afterwards, with Home unaffected throughout.
 
 Not yet confirmed on hardware:
 
@@ -264,7 +265,7 @@ recovering on its own, cause not established — the serial log was not captured
 If it recurs, catch `idf.py monitor` output during the outage: a boot banner
 means the board reset, no banner means it only lost the network.
 
-The image is ~1.53 MB, leaving 22% free in the 1.92 MB OTA partition.
+The image is 1,527,936 bytes, leaving 22% free in each 1.92 MB OTA slot.
 
 ## Licence
 

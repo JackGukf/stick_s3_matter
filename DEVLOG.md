@@ -7,19 +7,23 @@ instructions belong in [README.md](README.md), not here.
 
 ## Current status
 
-`v0.3.2`, delivered over the air. Commissions into the Apple Home app
-and the level slider worked on hardware before the face landed. Local git only;
-no remote configured, nothing pushed.
+`v0.3.2`, running on hardware and delivered there over the air. Pushed to
+<https://github.com/JackGukf/stick_s3_matter> (Apache-2.0), tags `v0.1.0`,
+`v0.1.1`, `v0.2.0`, `v0.3.2`.
+
+The light is commissioned into Apple Home and one dashboard, with one of five
+fabric slots free. The chip-tool fabric used for OTA was removed after use.
 
 | Area | State |
 | --- | --- |
-| Build | Clean. 1.53 MB image, 22% free in the 1.9 MB OTA partition |
+| Build | Clean. 1,527,936 byte image, 22% free in each 1.92 MB OTA slot |
 | PMIC power-up → panel lit | Confirmed on hardware |
 | BLE commissioning into Home | Confirmed on hardware |
 | Level → backlight PWM | Confirmed on hardware, then **replaced** by the bulb face |
 | Bulb face (all five states) | Confirmed on hardware |
 | Matter OTA, end to end | Confirmed on hardware, twice (v0.3.0 -> v0.3.1 -> v0.3.2) |
-| Second fabric alongside Apple Home | Confirmed on hardware |
+| Second fabric alongside Apple Home | Confirmed, added and removed cleanly |
+| Rollback protection | Confirmed: OTA'd image survives a reboot on both slots |
 | Color path (hue/sat, temp, xy) | **Untested on hardware** |
 | KEY1 toggle, 5 s factory reset | **Untested on hardware** |
 | Stability over hours | One unexplained "No Response" episode, self-recovered |
@@ -97,6 +101,27 @@ The board is the **M5StickS3** (ESP32-S3-PICO-1-N8R8, 8 MB flash, 8 MB PSRAM) �
   ~2.5x too dim. `hs_to_rgb()` in the driver normalizes everything to 0-255.
 - `GPIO_NUM_11` needs an explicit `#include <driver/gpio.h>`; the stock example
   got it transitively through `device.h`.
+- **`esp_lcd_panel_draw_bitmap()` is asynchronous.** It queues the colour
+  transfer and returns while DMA is still reading the buffer
+  (`esp_lcd_panel_io_spi.c`, `spi_device_queue_trans`). Reusing a single band
+  buffer without waiting on `on_color_trans_done` renders fragments of one band
+  into another. Invisible while every band was one solid colour, obvious the
+  moment they differed.
+- **`CONFIG_DEVICE_SOFTWARE_VERSION_NUMBER` is inert in this project.** The chip
+  component reads it only under `CONFIG_APP_PROJECT_VER_FROM_CONFIG`, and
+  otherwise uses `PROJECT_VER_NUMBER`. Check `build/esp-idf/chip/args.gn` for
+  `chip_config_software_version_number` to see what the firmware really got.
+- **`sdkconfig.defaults` is applied only when `sdkconfig` is generated fresh.**
+  Editing it on an existing build is silently ignored. `tools/check_sdkconfig.py`
+  now fails the build instead; the fix is `rm sdkconfig && idf.py build`.
+- **Nothing calls `esp_ota_mark_app_valid_cancel_rollback()`.** Not esp-matter,
+  not CHIP's ESP32 platform — `ConfirmCurrentImage()` only compares version
+  numbers. Enabling rollback without adding that call reverts every OTA on the
+  next reboot.
+- **WSL blocks inbound traffic except mDNS.** The Hyper-V firewall has
+  `DefaultInboundAction: Block` with Allow rules only for ICMP and UDP 5353, so
+  a service in WSL is discoverable from the LAN and then unreachable. See the
+  README for the rule that opens the Matter operational port.
 
 ## Commissioning
 
@@ -120,23 +145,25 @@ hub.
 2. **The color path has never run.** It is the largest untested piece, and it is
    exactly where the scale mismatch above was found. Setting a color from Home
    exercises it in seconds.
-3. **No git remote.** `v0.1.0` exists locally only; `gh` is not installed on
-   this machine.
+3. **Which fabric is the dashboard.** Identified as index 3 by elimination and
+   corroborated by the device initiating sessions to it, but never confirmed
+   from the dashboard's own side. Fabrics 1 (`0x1349` Apple Home) and 2
+   (`0x1384` Apple Keychain) are both Apple, which is not obvious from the
+   attribute alone — the Matter DCL is what distinguishes them.
 
 ## Next steps
 
-- Set a color from Home and confirm the hue is roughly right.
+- Set a colour from Home and confirm the bulb tint is roughly right. This is the
+  largest untested path and takes seconds to exercise.
 - Press KEY1 (toggle) and hold it 5 s (factory reset); confirm Home follows.
-- Decide where to push, then `git remote add origin <URL>` and
-  `git push -u origin main --follow-tags`.
-- Flash the bulb face and confirm it on hardware: the 1 % sliver, the level
-  readout tracking a Home slider drag, and the footer's build string.
-- Decide the two open design questions the face raised: whether footer line 1
-  should carry the Basic Information `NodeLabel` instead of VID/PID/EP, and
-  whether the build string should be the Matter `SoftwareVersion` (still 0)
-  rather than `git describe`.
+  Note the factory reset drops every fabric, so re-pairing follows.
 - KEY2 (G12) is still unused. It could wake a plain info screen while the light
-  is off, since identity and build are invisible on a dark panel.
+  is off, since the build string is invisible on a dark panel.
+- If chip-tool is needed again, pair it through Home's *Turn On Pairing Mode*
+  and give it durable storage this time (`--storage-directory ~/.chip-tool`),
+  since `/tmp` is emptied on boot.
+- Consider whether the panel should show anything while off. Everything the
+  device reports about itself currently vanishes with the backlight.
 
 ## Sessions
 
